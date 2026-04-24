@@ -94,6 +94,33 @@
       filter: drop-shadow(0 0 7px rgba(255, 100, 150, 0.48));
     }
 
+    /* 空心粉红色、稍小一点的心脏跳动爱心 */
+    .heartbeat-heart {
+      display: inline-block;
+      font-size: 19px;
+      line-height: 1;
+      color: #ff8bd1;
+      font-weight: 900;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      transform-origin: center;
+      animation: heartBeat 0.78s ease-in-out infinite;
+      text-shadow:
+        0 0 4px rgba(255, 139, 209, 0.82),
+        0 0 9px rgba(255, 92, 180, 0.42);
+      filter:
+        drop-shadow(0 0 4px rgba(255, 139, 209, 0.72))
+        drop-shadow(0 0 8px rgba(255, 92, 180, 0.32));
+    }
+
+    @keyframes heartBeat {
+      0% { transform: scale(1); }
+      13% { transform: scale(1.30); }
+      26% { transform: scale(1); }
+      42% { transform: scale(1.18); }
+      62% { transform: scale(1); }
+      100% { transform: scale(1); }
+    }
+
     .tap-ring {
       position: fixed;
       left: var(--tx);
@@ -118,7 +145,7 @@
 
     /*
       轻微抖动效果：
-      文字整体从上往下落，不做大幅左右摆动。
+      文字整体从上往下落，不做大幅左右摆动；
       下落过程中只在当前位置附近产生 1px-7px 的细小抖动。
     */
     @keyframes fallShake {
@@ -127,9 +154,7 @@
         transform: translate3d(calc(-50% + var(--j0)), 0, 0)
           rotate(calc(var(--rotate) + var(--r0))) scale(.96);
       }
-      8% {
-        opacity: 1;
-      }
+      8% { opacity: var(--item-opacity, 1); }
       14% {
         transform: translate3d(calc(-50% + var(--j1)), 16vh, 0)
           rotate(calc(var(--rotate) + var(--r1))) scale(1);
@@ -155,7 +180,7 @@
           rotate(calc(var(--rotate) + var(--r6))) scale(1);
       }
       100% {
-        opacity: .96;
+        opacity: var(--item-opacity, .96);
         transform: translate3d(calc(-50% + var(--j7)), 124vh, 0)
           rotate(calc(var(--rotate) + var(--r7))) scale(1);
       }
@@ -168,6 +193,9 @@
       }
       .emoji {
         font-size: 22px;
+      }
+      .heartbeat-heart {
+        font-size: 20px;
       }
     }
   </style>
@@ -183,20 +211,22 @@
       =============================
     */
     const CONFIG = {
-      phoneCount: 22,
-      desktopCount: 32,
+      phoneCount: 16,          // 点击时：手机端每轮数量
+      desktopCount: 24,        // 点击时：电脑端每轮数量
+      autoPhoneCount: 5,       // 不点击时：手机端少量飘落
+      autoDesktopCount: 7,     // 不点击时：电脑端少量飘落
       fontSize: 17,
       minLetterSpacing: 4,
       maxLetterSpacing: 6,
       minDuration: 8.2,
       maxDuration: 11.2,
-      minSpawnGap: 90,
-      maxSpawnGap: 125,
-      autoWaveInterval: 4300,
-      emojiProbability: 0.40,
+      minSpawnGap: 110,
+      maxSpawnGap: 150,
+      autoWaveInterval: 5200,
+      emojiProbability: 0.72,
       mobileColumns: 4,
       desktopColumns: 7,
-      maxHorizontalJitter: 3.2,
+      maxHorizontalJitter: 3.0,
 
       // 抖动幅度：建议 2-7，越大越明显
       minShake: 1,
@@ -218,7 +248,7 @@
           ["#ffd6ea", "#ff9fce", "#ff6fb1"],
           ["#fff0f8", "#ff8bd1", "#ff4fc3"]
         ],
-        weight: 5
+        weight: 3
       },
       {
         text: "I miss you👄晶晶",
@@ -227,7 +257,7 @@
           ["#ffffff", "#b6f2ff", "#79d8ff"],
           ["#eaffff", "#a4ffe8", "#82b7ff"]
         ],
-        weight: 5
+        weight: 3
       },
       {
         text: "I miss 晶晶",
@@ -236,19 +266,20 @@
           ["#def5ff", "#bfd4ff", "#9bb4ff"],
           ["#fff2c7", "#ffc8ec", "#cdb4ff"]
         ],
-        weight: 5
+        weight: 3
       }
     ];
 
-    // 多穿插小黄脸和小爱心
+    // 小黄脸和小爱心，其中“♡”为空心粉红色跳动爱心
     const emojiItems = [
-      { text: "❤️", weight: 6 },
-      { text: "💕", weight: 4 },
-      { text: "💖", weight: 3 },
+      { text: "❤️", weight: 9 },
+      { text: "💕", weight: 7 },
+      { text: "💖", weight: 6 },
+      { text: "♡", weight: 18, beat: true },
       { text: "🥰", weight: 4 },
       { text: "😘", weight: 4 },
-      { text: "😊", weight: 3 },
-      { text: "😉", weight: 3 },
+      { text: "😊", weight: 2 },
+      { text: "😉", weight: 2 },
       { text: "😍", weight: 2 }
     ];
 
@@ -300,7 +331,18 @@
 
       if (useEmoji) {
         el.classList.add("emoji");
-        el.textContent = source.text;
+
+        if (source.beat) {
+          const heart = document.createElement("span");
+          heart.className = "heartbeat-heart";
+          heart.textContent = source.text;
+          el.appendChild(heart);
+          // 跳动爱心跟文字一样从上往下飘，但层级略低、透明度略低，尽量不遮挡文字
+          el.style.setProperty("--item-opacity", "0.78");
+        } else {
+          el.textContent = source.text;
+          el.style.setProperty("--item-opacity", "0.95");
+        }
       } else {
         el.classList.add("gradient-text");
         el.textContent = source.text;
@@ -308,20 +350,36 @@
         el.style.setProperty("--c1", colors[0]);
         el.style.setProperty("--c2", colors[1]);
         el.style.setProperty("--c3", colors[2]);
+        el.style.setProperty("--item-opacity", "0.96");
       }
 
-      // 分栏布局：保持不拥挤、不大幅左右晃
+      // 分栏布局：保持不拥挤，尽量减少遮挡
       const isPhone = window.innerWidth <= 430;
       const columns = isPhone ? CONFIG.mobileColumns : CONFIG.desktopColumns;
       const col = (index + waveIndex) % columns;
       const baseX = ((col + 0.5) / columns) * 100;
-      const x = Math.min(94, Math.max(6, baseX + rand(-CONFIG.maxHorizontalJitter, CONFIG.maxHorizontalJitter)));
+      let jitter = rand(-CONFIG.maxHorizontalJitter, CONFIG.maxHorizontalJitter);
+
+      // 跳动爱心横向偏移稍大一点，减少与文字重合
+      if (source.beat) {
+        jitter += Math.random() > 0.5 ? 3.5 : -3.5;
+      }
+
+      const x = Math.min(95, Math.max(5, baseX + jitter));
 
       el.style.setProperty("--x", x + "vw");
       el.style.setProperty("--space", rand(CONFIG.minLetterSpacing, CONFIG.maxLetterSpacing).toFixed(1) + "px");
       el.style.setProperty("--rotate", rand(-3, 3).toFixed(1) + "deg");
       el.style.setProperty("--duration", rand(CONFIG.minDuration, CONFIG.maxDuration).toFixed(2) + "s");
-      el.style.setProperty("--z", Math.floor(rand(1, 12)));
+
+      // 文字层级更高，跳动爱心层级略低，尽量不遮挡文字
+      if (source.beat) {
+        el.style.setProperty("--z", Math.floor(rand(1, 3)));
+      } else if (useEmoji) {
+        el.style.setProperty("--z", Math.floor(rand(3, 7)));
+      } else {
+        el.style.setProperty("--z", Math.floor(rand(8, 12)));
+      }
 
       // 关键：轻微抖动，而不是左右大幅晃动
       for (let i = 0; i <= 7; i++) {
@@ -333,11 +391,19 @@
       stage.appendChild(el);
     }
 
-    function startWave(x = window.innerWidth / 2, y = window.innerHeight * 0.25) {
+    function startWave(x = window.innerWidth / 2, y = window.innerHeight * 0.25, isAuto = false) {
       waveIndex++;
-      createTapRing(x, y);
 
-      const total = window.innerWidth <= 430 ? CONFIG.phoneCount : CONFIG.desktopCount;
+      // 自动飘落时不显示点击圆环；手动点击时显示圆环
+      if (!isAuto) {
+        createTapRing(x, y);
+      }
+
+      const isPhone = window.innerWidth <= 430;
+      const total = isAuto
+        ? (isPhone ? CONFIG.autoPhoneCount : CONFIG.autoDesktopCount)
+        : (isPhone ? CONFIG.phoneCount : CONFIG.desktopCount);
+
       let delay = 0;
 
       for (let i = 0; i < total; i++) {
@@ -358,7 +424,8 @@
       autoTimer = setInterval(() => {
         startWave(
           rand(window.innerWidth * 0.24, window.innerWidth * 0.76),
-          window.innerHeight * 0.25
+          window.innerHeight * 0.25,
+          true
         );
       }, CONFIG.autoWaveInterval);
     }
@@ -367,10 +434,11 @@
 
     window.addEventListener("load", () => {
       requestAnimationFrame(() => {
-        startWave(window.innerWidth / 2, window.innerHeight * 0.25);
+        // 预览时不点击也会自动少量飘落
+        startWave(window.innerWidth / 2, window.innerHeight * 0.25, true);
         setTimeout(() => {
-          startWave(window.innerWidth * 0.35, window.innerHeight * 0.28);
-        }, 1000);
+          startWave(window.innerWidth * 0.35, window.innerHeight * 0.28, true);
+        }, 1200);
         startAutoWave();
       });
     });
