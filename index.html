@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>晶晶爱你 · 轻微抖动下落弹幕</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    #stage {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background: #000;
+      contain: layout paint style;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      isolation: isolate;
+    }
+
+    .hint {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      z-index: 9999;
+      padding: 10px 16px;
+      border-radius: 999px;
+      color: rgba(255,255,255,.92);
+      font-size: 13px;
+      letter-spacing: 2px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      white-space: nowrap;
+      pointer-events: none;
+      animation: hintFade 3.2s ease forwards;
+    }
+
+    @keyframes hintFade {
+      0%, 65% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    .float-item {
+      position: absolute;
+      left: var(--x);
+      top: -92px;
+      z-index: var(--z);
+      font-size: 17px;
+      line-height: 1.45;
+      letter-spacing: var(--space);
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate3d(-50%, 0, 0) rotate(var(--rotate));
+      will-change: transform, opacity;
+      backface-visibility: hidden;
+      animation: fallShake var(--duration) linear forwards;
+      padding: 2px 4px;
+      max-width: 92vw;
+    }
+
+    .gradient-text {
+      font-weight: 700;
+      background-image: linear-gradient(135deg, var(--c1), var(--c2), var(--c3));
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 2px 6px rgba(255, 85, 170, 0.30));
+    }
+
+    .emoji {
+      font-size: 21px;
+      letter-spacing: 2px;
+      filter: drop-shadow(0 0 7px rgba(255, 100, 150, 0.48));
+    }
+
+    .tap-ring {
+      position: fixed;
+      left: var(--tx);
+      top: var(--ty);
+      width: 78px;
+      height: 78px;
+      z-index: 9998;
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(.25);
+      border: 1px solid rgba(255, 160, 220, .85);
+      box-shadow: 0 0 20px rgba(255, 80, 160, .42);
+      animation: tapRing .6s ease-out forwards;
+    }
+
+    @keyframes tapRing {
+      to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.45);
+      }
+    }
+
+    /*
+      轻微抖动效果：
+      文字整体从上往下落，不做大幅左右摆动。
+      下落过程中只在当前位置附近产生 1px-7px 的细小抖动。
+    */
+    @keyframes fallShake {
+      0% {
+        opacity: 0;
+        transform: translate3d(calc(-50% + var(--j0)), 0, 0)
+          rotate(calc(var(--rotate) + var(--r0))) scale(.96);
+      }
+      8% {
+        opacity: 1;
+      }
+      14% {
+        transform: translate3d(calc(-50% + var(--j1)), 16vh, 0)
+          rotate(calc(var(--rotate) + var(--r1))) scale(1);
+      }
+      28% {
+        transform: translate3d(calc(-50% + var(--j2)), 34vh, 0)
+          rotate(calc(var(--rotate) + var(--r2))) scale(1);
+      }
+      42% {
+        transform: translate3d(calc(-50% + var(--j3)), 52vh, 0)
+          rotate(calc(var(--rotate) + var(--r3))) scale(1);
+      }
+      56% {
+        transform: translate3d(calc(-50% + var(--j4)), 70vh, 0)
+          rotate(calc(var(--rotate) + var(--r4))) scale(1);
+      }
+      70% {
+        transform: translate3d(calc(-50% + var(--j5)), 88vh, 0)
+          rotate(calc(var(--rotate) + var(--r5))) scale(1);
+      }
+      84% {
+        transform: translate3d(calc(-50% + var(--j6)), 106vh, 0)
+          rotate(calc(var(--rotate) + var(--r6))) scale(1);
+      }
+      100% {
+        opacity: .96;
+        transform: translate3d(calc(-50% + var(--j7)), 124vh, 0)
+          rotate(calc(var(--rotate) + var(--r7))) scale(1);
+      }
+    }
+
+    @media (max-width: 430px) {
+      .float-item {
+        font-size: 17px;
+        max-width: 94vw;
+      }
+      .emoji {
+        font-size: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="stage" aria-label="点击屏幕生成满屏爱心表白弹幕"></div>
+  <div class="hint">点击屏幕，满屏弹出表白文字</div>
+
+  <script>
+    /*
+      =============================
+      可自定义参数：按需修改
+      =============================
+    */
+    const CONFIG = {
+      phoneCount: 22,
+      desktopCount: 32,
+      fontSize: 17,
+      minLetterSpacing: 4,
+      maxLetterSpacing: 6,
+      minDuration: 8.2,
+      maxDuration: 11.2,
+      minSpawnGap: 90,
+      maxSpawnGap: 125,
+      autoWaveInterval: 4300,
+      emojiProbability: 0.40,
+      mobileColumns: 4,
+      desktopColumns: 7,
+      maxHorizontalJitter: 3.2,
+
+      // 抖动幅度：建议 2-7，越大越明显
+      minShake: 1,
+      maxShake: 7,
+
+      // 旋转抖动角度：建议 0.3-1.2
+      minRotateShake: 0.3,
+      maxRotateShake: 1.2
+    };
+
+    const stage = document.getElementById("stage");
+
+    // 三种文字内容：每种文字都配 3 种渐变色系
+    const textItems = [
+      {
+        text: "晶晶爱♥️你",
+        gradients: [
+          ["#ffb6e1", "#ff7ab8", "#ff4f9a"],
+          ["#ffd6ea", "#ff9fce", "#ff6fb1"],
+          ["#fff0f8", "#ff8bd1", "#ff4fc3"]
+        ],
+        weight: 5
+      },
+      {
+        text: "I miss you👄晶晶",
+        gradients: [
+          ["#d9fff3", "#8dffd8", "#4af7c2"],
+          ["#ffffff", "#b6f2ff", "#79d8ff"],
+          ["#eaffff", "#a4ffe8", "#82b7ff"]
+        ],
+        weight: 5
+      },
+      {
+        text: "I miss 晶晶",
+        gradients: [
+          ["#f3ddff", "#ffb3e6", "#ff86cf"],
+          ["#def5ff", "#bfd4ff", "#9bb4ff"],
+          ["#fff2c7", "#ffc8ec", "#cdb4ff"]
+        ],
+        weight: 5
+      }
+    ];
+
+    // 多穿插小黄脸和小爱心
+    const emojiItems = [
+      { text: "❤️", weight: 6 },
+      { text: "💕", weight: 4 },
+      { text: "💖", weight: 3 },
+      { text: "🥰", weight: 4 },
+      { text: "😘", weight: 4 },
+      { text: "😊", weight: 3 },
+      { text: "😉", weight: 3 },
+      { text: "😍", weight: 2 }
+    ];
+
+    function buildWeighted(list) {
+      return list.flatMap(item => Array(item.weight).fill(item));
+    }
+
+    const weightedTexts = buildWeighted(textItems);
+    const weightedEmojis = buildWeighted(emojiItems);
+
+    let waveIndex = 0;
+    let lastTapTime = 0;
+    let autoTimer = null;
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function pick(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function createTapRing(x, y) {
+      const ring = document.createElement("div");
+      ring.className = "tap-ring";
+      ring.style.setProperty("--tx", x + "px");
+      ring.style.setProperty("--ty", y + "px");
+      ring.addEventListener("animationend", () => ring.remove(), { once: true });
+      document.body.appendChild(ring);
+    }
+
+    function randomShakePx() {
+      const direction = Math.random() > 0.5 ? 1 : -1;
+      return (direction * rand(CONFIG.minShake, CONFIG.maxShake)).toFixed(1) + "px";
+    }
+
+    function randomRotateDeg() {
+      const direction = Math.random() > 0.5 ? 1 : -1;
+      return (direction * rand(CONFIG.minRotateShake, CONFIG.maxRotateShake)).toFixed(2) + "deg";
+    }
+
+    function createFloatingItem(index) {
+      const useEmoji = Math.random() < CONFIG.emojiProbability;
+      const source = useEmoji ? pick(weightedEmojis) : pick(weightedTexts);
+
+      const el = document.createElement("div");
+      el.className = "float-item";
+      el.style.fontSize = CONFIG.fontSize + "px";
+
+      if (useEmoji) {
+        el.classList.add("emoji");
+        el.textContent = source.text;
+      } else {
+        el.classList.add("gradient-text");
+        el.textContent = source.text;
+        const colors = pick(source.gradients);
+        el.style.setProperty("--c1", colors[0]);
+        el.style.setProperty("--c2", colors[1]);
+        el.style.setProperty("--c3", colors[2]);
+      }
+
+      // 分栏布局：保持不拥挤、不大幅左右晃
+      const isPhone = window.innerWidth <= 430;
+      const columns = isPhone ? CONFIG.mobileColumns : CONFIG.desktopColumns;
+      const col = (index + waveIndex) % columns;
+      const baseX = ((col + 0.5) / columns) * 100;
+      const x = Math.min(94, Math.max(6, baseX + rand(-CONFIG.maxHorizontalJitter, CONFIG.maxHorizontalJitter)));
+
+      el.style.setProperty("--x", x + "vw");
+      el.style.setProperty("--space", rand(CONFIG.minLetterSpacing, CONFIG.maxLetterSpacing).toFixed(1) + "px");
+      el.style.setProperty("--rotate", rand(-3, 3).toFixed(1) + "deg");
+      el.style.setProperty("--duration", rand(CONFIG.minDuration, CONFIG.maxDuration).toFixed(2) + "s");
+      el.style.setProperty("--z", Math.floor(rand(1, 12)));
+
+      // 关键：轻微抖动，而不是左右大幅晃动
+      for (let i = 0; i <= 7; i++) {
+        el.style.setProperty(`--j${i}`, randomShakePx());
+        el.style.setProperty(`--r${i}`, randomRotateDeg());
+      }
+
+      el.addEventListener("animationend", () => el.remove(), { once: true });
+      stage.appendChild(el);
+    }
+
+    function startWave(x = window.innerWidth / 2, y = window.innerHeight * 0.25) {
+      waveIndex++;
+      createTapRing(x, y);
+
+      const total = window.innerWidth <= 430 ? CONFIG.phoneCount : CONFIG.desktopCount;
+      let delay = 0;
+
+      for (let i = 0; i < total; i++) {
+        delay += rand(CONFIG.minSpawnGap, CONFIG.maxSpawnGap);
+        setTimeout(() => createFloatingItem(i), delay);
+      }
+    }
+
+    function handlePointer(e) {
+      const now = Date.now();
+      if (now - lastTapTime < 240) return;
+      lastTapTime = now;
+      startWave(e.clientX, e.clientY);
+    }
+
+    function startAutoWave() {
+      clearInterval(autoTimer);
+      autoTimer = setInterval(() => {
+        startWave(
+          rand(window.innerWidth * 0.24, window.innerWidth * 0.76),
+          window.innerHeight * 0.25
+        );
+      }, CONFIG.autoWaveInterval);
+    }
+
+    document.addEventListener("pointerdown", handlePointer, { passive: true });
+
+    window.addEventListener("load", () => {
+      requestAnimationFrame(() => {
+        startWave(window.innerWidth / 2, window.innerHeight * 0.25);
+        setTimeout(() => {
+          startWave(window.innerWidth * 0.35, window.innerHeight * 0.28);
+        }, 1000);
+        startAutoWave();
+      });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        clearInterval(autoTimer);
+      } else {
+        startAutoWave();
+      }
+    });
+  </script>
+</body>
+</html>
