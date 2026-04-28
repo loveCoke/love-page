@@ -35,15 +35,18 @@
     }
 
     body {
-      display: grid;
-      place-items: center;
-      padding: 28px 18px 118px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(22px, 4vh, 44px);
+      padding: clamp(18px, 3vw, 34px) 18px;
     }
 
     .stage {
       position: relative;
       width: min(1080px, 100%);
-      min-height: min(820px, calc(100vh - 146px));
+      min-height: auto;
       display: grid;
       grid-template-columns: minmax(280px, 0.95fr) minmax(280px, 1.05fr);
       gap: clamp(18px, 3vw, 44px);
@@ -184,10 +187,6 @@
     }
 
     .bottom-love {
-      position: fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
       width: min(920px, calc(100% - 28px));
       z-index: 9;
       padding: 18px 22px;
@@ -265,10 +264,10 @@
     @keyframes bottomPulse {
       0%,
       100% {
-        transform: translateX(-50%) scale(1);
+        transform: scale(1);
       }
       50% {
-        transform: translateX(-50%) scale(1.035);
+        transform: scale(1.035);
       }
     }
 
